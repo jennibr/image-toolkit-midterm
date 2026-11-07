@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.part
+# NOTE: models/blaze_face_short_range.tflite is intentionally NOT ignored (small, needed offline)

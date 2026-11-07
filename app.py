@@ -3,6 +3,15 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+# Show the real cause on the page if OpenCV cannot load (e.g. missing system library)
+try:
+    import cv2  # noqa: F401
+except Exception as exc:  # pragma: no cover
+    st.error(f"OpenCV failed to import: {type(exc).__name__}: {exc}")
+    st.info("If this mentions libGL.so.1 or libgthread, make sure packages.txt (libgl1, "
+            "libglib2.0-0) is at the repo root, then delete and re-create the app.")
+    st.stop()
+
 from modules import color_hist, face_detect, image_io, spatial_filter
 
 import matplotlib.pyplot as plt
@@ -100,8 +109,10 @@ with tab3:
         text = st.text_area(
             "Kernel (one row per line; separate values by space or comma)",
             value=spatial_filter.PRESETS[preset], height=180, key=f"kernel_{preset}")
-        norm_label = st.radio("Normalization",
-                              ["None", "Divide by sum of weights", "Divide by custom value"])
+        norm_options = ["None", "Divide by sum of weights", "Divide by custom value"]
+        default_norm = 1 if spatial_filter.PRESET_NORMALIZATION.get(preset) == "sum" else 0
+        norm_label = st.radio("Normalization", norm_options, index=default_norm,
+                              key=f"norm_{preset}")
         divisor = 1.0
         if norm_label == "Divide by custom value":
             divisor = st.number_input("Divisor", value=9.0)
@@ -116,6 +127,10 @@ with tab3:
         kernel, warn = spatial_filter.normalize_kernel(kernel, norm_mode, divisor)
         if warn:
             st.warning(warn)
+        if norm_mode == "none" and kernel.sum() > 1.5:
+            st.warning(f"Kernel weights sum to {kernel.sum():.1f}, so the output will be about "
+                       f"{kernel.sum():.0f}x brighter and will likely saturate. "
+                       "Consider 'Divide by sum of weights'.")
         filtered = spatial_filter.apply_convolution(rgb, kernel, border, bias, gray_first)
     except spatial_filter.KernelError as exc:
         st.error(f"Invalid kernel: {exc}")

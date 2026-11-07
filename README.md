@@ -23,3 +23,10 @@ In VS Code: Ctrl+Shift+P -> "Python: Select Interpreter" -> choose `.venv`.
 | modules/face_detect.py | F4 face detection | Ch.3 |
 | tests/test_core.py | boundary-case tests | Ch.3 |
 | docs/AI_AUDIT_TRAIL.md | prompt log | Ch.4 |
+
+## Deployment (Streamlit Community Cloud)
+1. Push this folder to a **public** GitHub repo.
+2. share.streamlit.io -> New app -> pick repo, branch `main`, main file `app.py`.
+3. Advanced settings -> Python version **3.11**.
+4. `packages.txt` installs the system libraries OpenCV needs (libgl1, libglib2.0-0).
+5. Commit `models/blaze_face_short_range.tflite` so MediaPipe works without a download.
