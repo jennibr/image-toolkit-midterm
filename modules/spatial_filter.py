@@ -29,6 +29,9 @@ PRESETS: dict[str, str] = {
     "Custom (edit me)": "0 0 0\n0 1 0\n0 0 0",
 }
 
+# Suggested normalization per preset (blur kernels should sum to 1)
+PRESET_NORMALIZATION = {"Box blur 3x3": "sum", "Gaussian 3x3": "sum", "Gaussian 5x5": "sum"}
+
 BORDER_MODES = {
     "Reflect": cv2.BORDER_REFLECT_101,
     "Replicate": cv2.BORDER_REPLICATE,
