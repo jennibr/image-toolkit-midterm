@@ -1,0 +1,12 @@
+# Python 3.11
+streamlit>=1.40
+numpy>=1.26
+# OpenCV must stay 4.x: Haar CascadeClassifier does not exist in 5.x.
+# mediapipe depends on opencv-contrib-python, so we pin that package (not -headless)
+# to stop pip from pulling 5.x.
+opencv-contrib-python>=4.9,<5
+Pillow>=10.0
+matplotlib>=3.8
+pandas>=2.1
+# Optional second face-detection engine (Tasks API, any 0.10.x / 1.x). App works without it.
+mediapipe>=0.10.9
