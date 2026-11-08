@@ -30,3 +30,7 @@ In VS Code: Ctrl+Shift+P -> "Python: Select Interpreter" -> choose `.venv`.
 3. Advanced settings -> Python version **3.11**.
 4. `packages.txt` installs the system libraries OpenCV needs (libgl1, libglib2.0-0).
 5. Commit `models/blaze_face_short_range.tflite` so MediaPipe works without a download.
+
+## Sample images
+Put a few test images (PNG/JPG/BMP) into `samples/`; the sidebar then shows a
+"try a sample image" dropdown so reviewers can test without uploading anything.

@@ -1,4 +1,6 @@
 """Main Streamlit entry point.  Run:  streamlit run app.py"""
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -20,17 +22,30 @@ st.set_page_config(page_title="AI-Assisted Image Processing Toolkit", layout="wi
 st.title("AI-Assisted Image Processing & Face Analysis Toolkit")
 
 # ---------------------------------------------------------------- sidebar / load
+SAMPLE_DIR = Path(__file__).parent / "samples"
+samples = (sorted(p for p in SAMPLE_DIR.iterdir()
+                  if p.suffix.lower().lstrip(".") in image_io.SUPPORTED_EXTENSIONS)
+           if SAMPLE_DIR.exists() else [])
+
 with st.sidebar:
     st.header("Input")
     uploaded = st.file_uploader("Upload an image", type=image_io.SUPPORTED_EXTENSIONS)
     st.caption("Supported: PNG, JPG/JPEG, BMP")
+    sample_choice = "(none)"
+    if samples:
+        sample_choice = st.selectbox("...or try a sample image", ["(none)"] + [p.name for p in samples])
 
-if uploaded is None:
-    st.info("Upload an image in the sidebar to begin.")
+if uploaded is not None:
+    data, fname = uploaded.getvalue(), uploaded.name
+elif sample_choice != "(none)":
+    path = SAMPLE_DIR / sample_choice
+    data, fname = path.read_bytes(), path.name
+else:
+    st.info("Upload an image (or pick a sample) in the sidebar to begin.")
     st.stop()
 
 try:
-    rgb, info = image_io.load_image(uploaded.getvalue(), uploaded.name)
+    rgb, info = image_io.load_image(data, fname)
 except image_io.ImageLoadError as exc:
     st.error(str(exc))
     st.stop()
@@ -108,7 +123,8 @@ with tab3:
         preset = st.selectbox("Preset", list(spatial_filter.PRESETS))
         text = st.text_area(
             "Kernel (one row per line; separate values by space or comma)",
-            value=spatial_filter.PRESETS[preset], height=180, key=f"kernel_{preset}")
+            value=spatial_filter.PRESETS[preset], height=180, key=f"kernel_{preset}",
+            help="Square matrix with odd size (3x3, 5x5, ...). Max 31x31.")
         norm_options = ["None", "Divide by sum of weights", "Divide by custom value"]
         default_norm = 1 if spatial_filter.PRESET_NORMALIZATION.get(preset) == "sum" else 0
         norm_label = st.radio("Normalization", norm_options, index=default_norm,
@@ -116,7 +132,8 @@ with tab3:
         divisor = 1.0
         if norm_label == "Divide by custom value":
             divisor = st.number_input("Divisor", value=9.0)
-        bias = st.slider("Bias / offset added after convolution", -255, 255, 0)
+        bias = st.slider("Bias / offset added after convolution", -255, 255, 0,
+                         help="Added to every pixel after filtering (e.g. +128 for emboss).")
         border = st.selectbox("Border handling", list(spatial_filter.BORDER_MODES))
         gray_first = st.checkbox("Convert to grayscale first", value=False)
 
@@ -181,10 +198,13 @@ with tab4:
     try:
         if engine.startswith("Haar"):
             c1, c2, c3, c4 = st.columns(4)
-            sf = c1.slider("scaleFactor", 1.05, 1.5, 1.1, 0.05)
-            mn = c2.slider("minNeighbors", 1, 15, 5)
-            ms = c3.slider("minSize (px)", 20, 200, 30)
-            mc = c4.slider("Min confidence", 0.0, 0.99, 0.0, 0.05)
+            sf = c1.slider("scaleFactor", 1.05, 1.5, 1.1, 0.05,
+                           help="Image pyramid step. Smaller = slower but finds more faces.")
+            mn = c2.slider("minNeighbors", 1, 15, 5,
+                           help="Higher = fewer false positives but may miss faces.")
+            ms = c3.slider("minSize (px)", 20, 200, 30, help="Ignore faces smaller than this.")
+            mc = c4.slider("Min confidence", 0.0, 0.99, 0.0, 0.05,
+                           help="Hide detections scoring below this value.")
             haar_all = face_detect.detect_haar(rgb, sf, mn, ms)
             dets = [d for d in haar_all if d.confidence >= mc]
             if len(dets) != len(haar_all):
@@ -202,7 +222,8 @@ with tab4:
 
     raw_count = len(dets)
     iou_thr = st.slider("Overlap threshold (IoU) for removing duplicate boxes "
-                        "(1.0 = off)", 0.05, 1.0, 0.3, 0.05)
+                        "(1.0 = off)", 0.05, 1.0, 0.3, 0.05,
+                        help="Boxes overlapping a better box by more than this IoU are removed.")
     dets = face_detect.non_max_suppression(dets, iou_thr)
 
     st.metric("Faces detected", len(dets))

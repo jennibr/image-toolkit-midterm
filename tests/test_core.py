@@ -87,6 +87,40 @@ def test_tile_origins():
     assert xs[0] == 0 and xs[-1] == 1310 - 740 and all(b > a for a, b in zip(xs, xs[1:]))
 
 
+def _naive_convolve(img, k):
+    """Reference implementation: explicit double loop, true convolution (kernel flipped),
+    reflect-101 border (same as cv2.BORDER_REFLECT_101 / np.pad 'reflect')."""
+    r = k.shape[0] // 2
+    pad = np.pad(img.astype(np.float64), ((r, r), (r, r), (0, 0)), mode="reflect")
+    out = np.zeros(img.shape, np.float64)
+    H, W = img.shape[:2]
+    for y in range(H):
+        for x in range(W):
+            acc = np.zeros(img.shape[2])
+            for i in range(-r, r + 1):
+                for j in range(-r, r + 1):
+                    acc += k[i + r, j + r] * pad[y + r - i, x + r - j]
+            out[y, x] = acc
+    return np.clip(np.rint(out), 0, 255).astype(np.uint8)
+
+
+def test_convolution_matches_naive_reference():
+    rng = np.random.default_rng(3)
+    img = rng.integers(0, 256, (12, 15, 3), dtype=np.uint8)
+    k = np.array([[1, 2, 0], [0, -1, 3], [2, 0, 1]], float)  # asymmetric: detects missing flip
+    got = sf.apply_convolution(img, k)
+    ref = _naive_convolve(img, k)
+    assert np.abs(got.astype(int) - ref.astype(int)).max() <= 1
+
+
+def test_psnr_matches_opencv():
+    import cv2
+    rng = np.random.default_rng(4)
+    a = rng.integers(0, 256, (20, 20, 3), dtype=np.uint8)
+    b = np.clip(a.astype(int) + rng.integers(-20, 21, a.shape), 0, 255).astype(np.uint8)
+    assert abs(sf.psnr(a, b) - cv2.PSNR(a, b)) < 1e-6
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
